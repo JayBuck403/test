@@ -199,7 +199,7 @@ final class ProductCategoriesProvider
   }
 }
 
-String _$productCategoriesHash() => r'1afb16d0ac52087cb4295f216cc76832c113af48';
+String _$productCategoriesHash() => r'45f31c3672d484c6c86a688685becf8e48db9c49';
 
 @ProviderFor(filteredProducts)
 const filteredProductsProvider = FilteredProductsProvider._();
@@ -240,4 +240,57 @@ final class FilteredProductsProvider
   }
 }
 
-String _$filteredProductsHash() => r'780ee5ea3f7026fd63679b0fe0812ddc63743c00';
+String _$filteredProductsHash() => r'3557178dbfb63649c5ed05ed7f1e4ed8e0945832';
+
+@ProviderFor(LikedProducts)
+const likedProductsProvider = LikedProductsProvider._();
+
+final class LikedProductsProvider
+    extends $NotifierProvider<LikedProducts, Set<int>> {
+  const LikedProductsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'likedProductsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$likedProductsHash();
+
+  @$internal
+  @override
+  LikedProducts create() => LikedProducts();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Set<int> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<int>>(value),
+    );
+  }
+}
+
+String _$likedProductsHash() => r'95f58f205bf167acafc8f27622ebc8d1bb78b0f7';
+
+abstract class _$LikedProducts extends $Notifier<Set<int>> {
+  Set<int> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<Set<int>, Set<int>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<Set<int>, Set<int>>,
+              Set<int>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}

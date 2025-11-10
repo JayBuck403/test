@@ -80,3 +80,24 @@ List<Product> filteredProducts(Ref ref) {
 
   return [];
 }
+
+
+@riverpod
+class LikedProducts extends _$LikedProducts {
+  @override
+  Set<int> build() {
+    return {};
+  }
+
+  void toggleLike(int productId) {
+    state = Set.from(state); 
+
+    if (state.contains(productId)) {
+      state.remove(productId);
+    } else {
+      state.add(productId);
+    }
+
+
+  }
+}

@@ -206,12 +206,18 @@ class ProductGrid extends ConsumerWidget {
   }
 }
 
-class ProductCard extends StatelessWidget {
+class ProductCard extends ConsumerWidget {
   final Product product;
   const ProductCard({super.key, required this.product});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+
+    final likedProducts = ref.watch(likedProductsProvider);
+    
+    // 2. Check if the current product's ID is in the set
+    final isLiked = likedProducts.contains(product.id);
+
     return Card(
       elevation: 1,
       margin: EdgeInsets.zero,
@@ -235,15 +241,22 @@ class ProductCard extends StatelessWidget {
               Positioned(
                 top: 8,
                 right: 8,
-                child: Container(
-                  height: 30,
-                  width: 30,
-                  decoration: const BoxDecoration(
-                    color: Color.fromARGB(255, 228, 228, 228),
-                    shape: BoxShape.circle,
+                child: GestureDetector(
+                  onTap: () {
+                    ref
+                        .read(likedProductsProvider.notifier)
+                        .toggleLike(product.id);
+                  },
+                  child: Container(
+                    height: 30,
+                    width: 30,
+                    decoration: const BoxDecoration(
+                      color: Color.fromARGB(255, 238, 238, 238),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(isLiked ? Icons.favorite : Icons.favorite_border,
+                        size: 18, color: isLiked ? Colors.red : Colors.white),
                   ),
-                  child: const Icon(Icons.favorite_border,
-                      size: 18, color: Colors.white),
                 ),
               ),
               if (product.rating > 4.8)
