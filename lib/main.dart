@@ -263,6 +263,23 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (product.rating <= 2.9)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.amberAccent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Trending',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                  ),
+                ),
             ],
           ),
 
