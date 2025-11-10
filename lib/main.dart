@@ -239,11 +239,11 @@ class ProductCard extends StatelessWidget {
                   height: 30,
                   width: 30,
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: Color.fromARGB(255, 228, 228, 228),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.favorite_border,
-                      size: 18, color: Colors.black54),
+                      size: 18, color: Colors.white),
                 ),
               ),
               if (product.rating > 4.8)
