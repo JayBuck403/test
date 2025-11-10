@@ -1,141 +1,319 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'models/product.dart';
+import 'providers/product_providers.dart';
 
-void main() => runApp(const MyApp());
+void main() {
+  runApp(const ProviderScope(
+    child: MyApp(),
+  ));
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ProductListPage(),
+      theme: ThemeData(fontFamily: 'Roboto'),
+      home: const ProductListPage(),
     );
   }
 }
 
-class ProductListPage extends StatefulWidget {
+class ProductListPage extends ConsumerWidget {
   const ProductListPage({super.key});
 
   @override
-  State<ProductListPage> createState() => _ProductListPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncProducts = ref.watch(productListProvider);
 
-class _ProductListPageState extends State<ProductListPage> {
-  List<dynamic>? _products;
-  bool _isLoading = true;
-  bool _isGridView = false;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() async {
-      await _fetchProducts();
-    });
-  }
-
-  Future<void> _fetchProducts() async {
-    try {
-      final response = await http.get(Uri.parse('https://dummyjson.com/products'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _products = data['products'];
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load products');
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      debugPrint(e.toString());
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Products'),
-        actions: [
-          IconButton(
-            icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
-            onPressed: () {
-              setState(() {
-                _isGridView = !_isGridView;
-              });
-            },
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 24),
+              const HeaderRow(),
+              const SizedBox(height: 20),
+              Expanded(
+                child: asyncProducts.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) =>
+                      Center(child: Text('Failed to load: $err')),
+                  data: (_) => const ProductGrid(),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _products == null
-              ? const Center(child: Text('Failed to load products'))
-              : _isGridView
-                  ? GridView.builder(
-                      padding: const EdgeInsets.all(8),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 0.75,
-                      ),
-                      itemCount: _products!.length,
-                      itemBuilder: (context, index) {
-                        final product = _products![index];
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                                  child: Image.network(
-                                    product['thumbnail'],
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(product['title'],
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 4),
-                                    Text('\$${product['price']}'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    )
-                  : ListView.builder(
-                      itemCount: _products!.length,
-                      itemBuilder: (context, index) {
-                        final product = _products![index];
-                        return ListTile(
-                          leading: Image.network(
-                            product['thumbnail'],
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                          ),
-                          title: Text(product['title']),
-                          subtitle: Text('\$${product['price']}'),
-                        );
-                      },
-                    ),
     );
   }
 }
+
+class HeaderRow extends StatelessWidget {
+  const HeaderRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Popular products',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Row(
+          children: [
+            FilterButton(),
+            const SizedBox(width: 8),
+            SortButton(),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+
+class FilterButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories = ref.watch(productCategoriesProvider);
+    final selected = ref.watch(selectedCategoryProvider);
+
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.black54,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          builder: (context) => ListView(
+            children: categories
+                .map((category) => ListTile(
+                      title: Text(category),
+                      onTap: () {
+                        ref
+                            .read(selectedCategoryProvider.notifier)
+                            .setCategory(category);
+                        Navigator.pop(context);
+                      },
+                    ))
+                .toList(),
+          ),
+        );
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            selected.length > 8 ? '${selected.substring(0, 8)}...' : selected,
+            style: const TextStyle(fontSize: 12), 
+          ),
+          const Icon(Icons.arrow_drop_down, size: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class SortButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sortType = ref.watch(productSortProvider);
+    final sortNames = {
+      SortType.none: 'Sort by',
+      SortType.byRating: 'Rating',
+      SortType.priceAsc: 'Price (Low)',
+      SortType.priceDesc: 'Price (High)',
+    };
+
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.black54,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          builder: (context) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: sortNames.entries
+                .map((entry) => ListTile(
+                      title: Text(entry.value),
+                      onTap: () {
+                        ref.read(productSortProvider.notifier).setSort(entry.key);
+                        Navigator.pop(context);
+                      },
+                    ))
+                .toList(),
+          ),
+        );
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            sortNames[sortType]!,
+            style: const TextStyle(fontSize: 12),
+          ),
+          const Icon(Icons.arrow_drop_down, size: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class ProductGrid extends ConsumerWidget {
+  const ProductGrid({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final products = ref.watch(filteredProductsProvider);
+
+    if (products.isEmpty) {
+      return const Center(child: Text('No products match your filter.'));
+    }
+
+    return MasonryGridView.count(
+      crossAxisCount: 2,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        return ProductCard(product: product);
+      },
+    );
+  }
+}
+
+class ProductCard extends StatelessWidget {
+  final Product product;
+  const ProductCard({super.key, required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
+                child: Image.network(
+                  product.thumbnail,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  height: (140 + (product.rating * 5)),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  height: 30,
+                  width: 30,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.favorite_border,
+                      size: 18, color: Colors.black54),
+                ),
+              ),
+              if (product.rating > 4.8)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Top Rated',
+                      style: TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 15),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  product.category,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'GHS ${product.price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.green
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.star,
+                            color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          product.rating.toStringAsFixed(1),
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
